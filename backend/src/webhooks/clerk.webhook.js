@@ -3,27 +3,26 @@ import User from "../models/user.model.js";
 import { verifyWebhook } from "@clerk/backend/webhooks";
 
 const router = express.Router();
+
 router.post("/", async (req, res) => {
   try {
-    const signSecret = process.env.CLERK_WEBHOOK_SIGNING_SECRET;
-
-    if (!signSecret) {
+    const signingSecret = process.env.CLERK_WEBHOOK_SIGNING_SECRET;
+    if (!signingSecret) {
       res.status(503).json({ message: "Webhook secret is not provided" });
       return;
     }
 
-    // clerk's verifier expects a web Request with the raw body; express.raw gives a buffer.
+    // clerk's verifier expects a Web Request with the raw body; express.raw gives a Buffer.
     const payload = Buffer.isBuffer(req.body)
       ? req.body.toString("utf8")
       : String(req.body);
-
     const request = new Request("http://internal/webhooks/clerk", {
       method: "POST",
       headers: new Headers(req.headers),
       body: payload,
     });
 
-    // throws if the signature is wrong or the bosy was tampered with; only then do we trust evt.
+    // throws if the signature is wrong or the body was tampered with; only then do we trust evt.
     const evt = await verifyWebhook(request, { signingSecret });
 
     if (evt.type === "user.created" || evt.type === "user.updated") {
